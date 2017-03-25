@@ -1,7 +1,19 @@
 # Import our Twitter credentials from credentials.py
 import tweepy
 import requests
+import nltk
+from nltk.tag.stanford import StanfordNERTagger
+
+#sudo pip install -U nltk
+#sudo pip install -U numpy
+
+nltk.download('maxent_ne_chunker')
+nltk.download('words')
+
 import json
+import re
+import time
+
 from time import sleep
 from credentials import *
 
@@ -33,7 +45,22 @@ class MLBListener(tweepy.StreamListener):
             Fetch player name from the text in 
             a tweet
         """
+        body = text.replace("@bestinmlb ", "")
+
         return text.replace("@bestinmlb ", "")
+
+    def processLanguage(self, text):
+
+       # try:
+            tager = StanfordNERTagger('../stanford-ner-2012-11-11/classifiers/english.all.3class.distsim.crf.ser.gz',
+               '../stanford-ner-2012-11-11/stanford-ner.jar') 
+            print(text)
+            tokenized_text = nltk.word_tokenize(text)
+            t = tager.tag(tokenized_text)
+            for item in t:
+                print(item)
+        #except Exception, e:
+            #print ("error " + str(e))
 
     def get_award(self, name):
         """
@@ -81,7 +108,7 @@ class MLBListener(tweepy.StreamListener):
             except tweepy.error.TweepError:
                 api.update_status("@" + username + " idontk!")
                 print("Tweet failed: tweepy error")
-            except err: 
+            except: 
                 print("Other error")
                 
     def get_user(self, status):
@@ -89,5 +116,9 @@ class MLBListener(tweepy.StreamListener):
 
 if __name__ == "__main__":
     listener = MLBListener()
-    stream = tweepy.Stream(auth=api.auth, listener=listener)
-    stream.userstream()
+    #stream = tweepy.Stream(auth=api.auth, listener=listener)
+    #stream.userstream()
+    stri = "what's Barry's stats"
+    print("hi")
+    listener.processLanguage(stri)
+    print("done!")
