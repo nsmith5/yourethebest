@@ -61,16 +61,31 @@ class MLBListener(tweepy.StreamListener):
         """
             Reply to user who tweeted us with award
         """
-        try:
-            api.update_status("@" + username + " " +  award)
-        except tweepy.TweepError:
-            api.update_status("@" + username + " idk!")
-        except:
-            pass
-
+        words = award.split(" ")
+        words.reverse()
+        tweets = []
+        while words:
+            string = []
+            
+            while len(" ".join(string)) < 100 and words:
+                string.append(words.pop())
+            
+            tweets.append(" ".join(string))
+        
+        for i, tweet in enumerate(tweets):
+            fulltweet = "@" + username + ' ' + tweet + " (" + str(i + 1) + "/" + str(len(tweets)) + ")"
+            print(fulltweet)
+            try: 
+                api.update_status(fulltweet)
+                print("Tweet succeeded")
+            except tweepy.error.TweepError:
+                api.update_status("@" + username + " idontk!")
+                print("Tweet failed: tweepy error")
+            except err: 
+                print("Other error")
+                
     def get_user(self, status):
         return status.user.screen_name
-
 
 if __name__ == "__main__":
     listener = MLBListener()
