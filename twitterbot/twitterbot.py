@@ -16,6 +16,11 @@ qual_to_adj = {
     "left": "is ",
 }
 
+
+class Player(object):
+    def __init__(self, name)
+        self.name = name
+
 class MLBListener(tweepy.StreamListener):
    
     def on_status(self, status):
@@ -23,9 +28,10 @@ class MLBListener(tweepy.StreamListener):
             name = self.get_name_from_tweet(status.text)
             award = self.get_award(name)
             username = self.get_user(status)
-            print(award)
-            print(len(award))
-            self.reply(username, award)
+            if award:
+                self.reply(username, award)
+            else:
+                self.reply_error(username)
 
     def get_name_from_tweet(self, text):
         """
@@ -42,20 +48,24 @@ class MLBListener(tweepy.StreamListener):
         url = "http://138.197.157.99"
         payload = {"player": name}
 
-        r= requests.post(url, data=json.dumps(payload))
+        r = requests.post(url, data=json.dumps(payload))
+
         return self.response_to_award(r.text)
     
     def response_to_award(self, response):
         dictionary = json.loads(response)
-        award = dictionary["player"] + " is the player with the best " + dictionary['metric'] 
-        for quality in dictionary['filters'][0:-1]:
+        if "error" in dictionary:
+            return None
+        else:
+            award = dictionary["player"] + " is the player with the best " + dictionary['metric'] 
+            for quality in dictionary['filters'][0:-1]:
+                indicator = quality.partition(' ')[0].lower()
+                award += " that " + qual_to_adj[indicator] + quality.lower()
+            quality = dictionary['filters'][-1]
             indicator = quality.partition(' ')[0].lower()
-            award += " that " + qual_to_adj[indicator] + quality.lower()
-        quality = dictionary['filters'][-1]
-        indicator = quality.partition(' ')[0].lower()
-        award += " and that "  + qual_to_adj[indicator] + quality.lower()
-        return award
-    
+            award += " and that "  + qual_to_adj[indicator] + quality.lower()
+            return award
+
     def reply(self, username, award):
         """
             Reply to user who tweeted us with award
@@ -79,13 +89,15 @@ class MLBListener(tweepy.StreamListener):
             + str(i + 1) + "/" + str(len(tweets)) + ")"
             self.tweet(fulltweet)
 
+    def reply_error(self, username):
+        self.tweet("@" + username + " sorry can't find that player!")
+
     def tweet(self, tweet):
         try: 
-            api.update_status(fulltweet)
+            api.update_status(tweet)
             print("Tweet succeeded")
         except tweepy.error.TweepError:
-            api.update_status("@" + username + " idontk!")
-            print("Tweet failed: tweepy error")
+            print("Twitter error...passing")
 
     def get_user(self, status):
         return status.user.screen_name
