@@ -18,7 +18,6 @@ qual_to_adj = {
 
 class MLBListener(tweepy.StreamListener):
    
-    
     def on_status(self, status):
         if "@bestinmlb" in status.text:
             name = self.get_name_from_tweet(status.text)
@@ -61,9 +60,11 @@ class MLBListener(tweepy.StreamListener):
         """
             Reply to user who tweeted us with award
         """
+        
         words = award.split(" ")
         words.reverse()
         tweets = []
+        
         while words:
             string = []
             
@@ -73,19 +74,22 @@ class MLBListener(tweepy.StreamListener):
             tweets.append(" ".join(string))
         
         for i, tweet in enumerate(tweets):
-            fulltweet = "@" + username + ' ' + tweet + " (" + str(i + 1) + "/" + str(len(tweets)) + ")"
-            print(fulltweet)
-            try: 
-                api.update_status(fulltweet)
-                print("Tweet succeeded")
-            except tweepy.error.TweepError:
-                api.update_status("@" + username + " idontk!")
-                print("Tweet failed: tweepy error")
-            except err: 
-                print("Other error")
-                
+            fulltweet = "@" 
+            + username + ' ' + tweet + " (" 
+            + str(i + 1) + "/" + str(len(tweets)) + ")"
+            self.tweet(fulltweet)
+
+    def tweet(self, tweet):
+        try: 
+            api.update_status(fulltweet)
+            print("Tweet succeeded")
+        except tweepy.error.TweepError:
+            api.update_status("@" + username + " idontk!")
+            print("Tweet failed: tweepy error")
+
     def get_user(self, status):
         return status.user.screen_name
+
 
 if __name__ == "__main__":
     listener = MLBListener()
