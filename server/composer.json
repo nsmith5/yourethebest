@@ -1,6 +1,0 @@
-{
-    "require": {
-        "league/route": "^3.0",
-        "zendframework/zend-diactoros": "^1.3"
-    }
-}
