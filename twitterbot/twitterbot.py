@@ -16,11 +16,6 @@ qual_to_adj = {
     "left": "is ",
 }
 
-
-class Player(object):
-    def __init__(self, name)
-        self.name = name
-
 class MLBListener(tweepy.StreamListener):
    
     def on_status(self, status):
@@ -53,18 +48,25 @@ class MLBListener(tweepy.StreamListener):
         return self.response_to_award(r.text)
     
     def response_to_award(self, response):
-        dictionary = json.loads(response)
-        if "error" in dictionary:
-            return None
-        else:
-            award = dictionary["player"] + " is the player with the best " + dictionary['metric'] 
-            for quality in dictionary['filters'][0:-1]:
-                indicator = quality.partition(' ')[0].lower()
-                award += " that " + qual_to_adj[indicator] + quality.lower()
-            quality = dictionary['filters'][-1]
-            indicator = quality.partition(' ')[0].lower()
-            award += " and that "  + qual_to_adj[indicator] + quality.lower()
-            return award
+        try:
+            dictionary = json.loads(response)
+            if "error" in dictionary:
+                return None
+        except:
+            return None    
+        
+        award = dictionary["player"].title() + " is the player with the most " + dictionary['metric'] 
+        for quality in dictionary['filters'][0:-1]:
+            indicator = quality.partition(' ')[0]
+            award += " that " + qual_to_adj[indicator] + quality
+        quality = dictionary['filters'][-1]
+        indicator = quality.partition(' ')[0].lower()
+        award += " and that "  + qual_to_adj[indicator] + quality
+        
+        if "fun_fact" in dictionary:
+            award += " " + dictionary["fun_fact"]
+
+        return award
 
     def reply(self, username, award):
         """
@@ -84,9 +86,7 @@ class MLBListener(tweepy.StreamListener):
             tweets.append(" ".join(string))
         
         for i, tweet in enumerate(tweets):
-            fulltweet = "@" 
-            + username + ' ' + tweet + " (" 
-            + str(i + 1) + "/" + str(len(tweets)) + ")"
+            fulltweet = "@" + username + ' ' + tweet + " (" + str(i + 1) + "/" + str(len(tweets)) + ")"
             self.tweet(fulltweet)
 
     def reply_error(self, username):
