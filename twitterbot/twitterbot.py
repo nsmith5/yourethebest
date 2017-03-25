@@ -28,17 +28,22 @@ qual_to_adj = {
     "left": "is ",
 }
 
+
+class Player(object):
+    def __init__(self, name):
+        self.name = name
+
 class MLBListener(tweepy.StreamListener):
    
-    
     def on_status(self, status):
         if "@bestinmlb" in status.text:
             name = self.get_name_from_tweet(status.text)
             award = self.get_award(name)
             username = self.get_user(status)
-            print(award)
-            print(len(award))
-            self.reply(username, award)
+            if award:
+                self.reply(username, award)
+            else:
+                self.reply_error(username)
 
     def get_name_from_tweet(self, text):
         """
@@ -47,20 +52,29 @@ class MLBListener(tweepy.StreamListener):
         """
         body = text.replace("@bestinmlb ", "")
 
-        return text.replace("@bestinmlb ", "")
+        return self.format_name(self.processLanguage(text.replace("@bestinmlb ", "")))
 
     def processLanguage(self, text):
 
        # try:
-            tager = StanfordNERTagger('../stanford-ner-2012-11-11/classifiers/english.all.3class.distsim.crf.ser.gz',
+        tager = StanfordNERTagger('../stanford-ner-2012-11-11/classifiers/english.all.3class.distsim.crf.ser.gz',
                '../stanford-ner-2012-11-11/stanford-ner.jar') 
-            print(text)
-            tokenized_text = nltk.word_tokenize(text)
-            t = tager.tag(tokenized_text)
-            for item in t:
-                print(item)
+        tokenized_text = nltk.word_tokenize(text)
+        t = tager.tag(tokenized_text)
+        for item in t:
+            print(item)
+        return t
         #except Exception, e:
             #print ("error " + str(e))
+    
+    def format_name(self, tokens):
+        name = ""
+        for pair in tokens:
+            print(pair)
+            if (pair[1] == "PERSON"):
+                name += pair[0] +" "
+        print("name is" + name)
+        return name
 
     def get_award(self, name):
         """
@@ -70,27 +84,33 @@ class MLBListener(tweepy.StreamListener):
         url = "http://138.197.157.99"
         payload = {"player": name}
 
-        r= requests.post(url, data=json.dumps(payload))
+        r = requests.post(url, data=json.dumps(payload))
+
         return self.response_to_award(r.text)
     
     def response_to_award(self, response):
         dictionary = json.loads(response)
-        award = dictionary["player"] + " is the player with the best " + dictionary['metric'] 
-        for quality in dictionary['filters'][0:-1]:
+        if "error" in dictionary:
+            return None
+        else:
+            award = dictionary["player"] + " is the player with the best " + dictionary['metric'] 
+            for quality in dictionary['filters'][0:-1]:
+                indicator = quality.partition(' ')[0].lower()
+                award += " that " + qual_to_adj[indicator] + quality.lower()
+            quality = dictionary['filters'][-1]
             indicator = quality.partition(' ')[0].lower()
-            award += " that " + qual_to_adj[indicator] + quality.lower()
-        quality = dictionary['filters'][-1]
-        indicator = quality.partition(' ')[0].lower()
-        award += " and that "  + qual_to_adj[indicator] + quality.lower()
-        return award
-    
+            award += " and that "  + qual_to_adj[indicator] + quality.lower()
+            return award
+
     def reply(self, username, award):
         """
             Reply to user who tweeted us with award
         """
+        
         words = award.split(" ")
         words.reverse()
         tweets = []
+        
         while words:
             string = []
             
@@ -100,25 +120,27 @@ class MLBListener(tweepy.StreamListener):
             tweets.append(" ".join(string))
         
         for i, tweet in enumerate(tweets):
-            fulltweet = "@" + username + ' ' + tweet + " (" + str(i + 1) + "/" + str(len(tweets)) + ")"
-            print(fulltweet)
-            try: 
-                api.update_status(fulltweet)
-                print("Tweet succeeded")
-            except tweepy.error.TweepError:
-                api.update_status("@" + username + " idontk!")
-                print("Tweet failed: tweepy error")
-            except: 
-                print("Other error")
-                
+            fulltweet = "@" 
+            + username + ' ' + tweet + " (" 
+            + str(i + 1) + "/" + str(len(tweets)) + ")"
+            self.tweet(fulltweet)
+
+    def reply_error(self, username):
+        self.tweet("@" + username + " sorry can't find that player!")
+
+    def tweet(self, tweet):
+        try: 
+            api.update_status(tweet)
+            print("Tweet succeeded")
+        except tweepy.error.TweepError:
+            print("Twitter error...passing")
+
     def get_user(self, status):
         return status.user.screen_name
 
+
 if __name__ == "__main__":
     listener = MLBListener()
-    #stream = tweepy.Stream(auth=api.auth, listener=listener)
-    #stream.userstream()
-    stri = "what's Barry's stats"
-    print("hi")
-    listener.processLanguage(stri)
-    print("done!")
+    stream = tweepy.Stream(auth=api.auth, listener=listener)
+    stream.userstream()
+
