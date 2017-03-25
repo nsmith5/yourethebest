@@ -1,5 +1,7 @@
 # Import our Twitter credentials from credentials.py
 import tweepy
+import requests
+import json
 from time import sleep
 from credentials import *
 
@@ -8,13 +10,22 @@ auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth)
 
+qual_to_adj = {
+    "born": "was ",
+    "comicbook": "has a ",
+    "left": "is ",
+}
+
 class MLBListener(tweepy.StreamListener):
+   
     
     def on_status(self, status):
         if "@bestinmlb" in status.text:
             name = self.get_name_from_tweet(status.text)
             award = self.get_award(name)
             username = self.get_user(status)
+            print(award)
+            print(len(award))
             self.reply(username, award)
 
     def get_name_from_tweet(self, text):
@@ -29,17 +40,36 @@ class MLBListener(tweepy.StreamListener):
             From name return award as a sentence using
             the server API 
         """
-        return " " + name + " is just the best!"
+        url = "http://138.197.157.99"
+        payload = {"player": name}
 
+        r= requests.post(url, data=json.dumps(payload))
+        return self.response_to_award(r.text)
+    
+    def response_to_award(self, response):
+        dictionary = json.loads(response)
+        award = dictionary["player"] + " is the player with the best " + dictionary['metric'] 
+        for quality in dictionary['filters'][0:-1]:
+            indicator = quality.partition(' ')[0].lower()
+            award += " that " + qual_to_adj[indicator] + quality.lower()
+        quality = dictionary['filters'][-1]
+        indicator = quality.partition(' ')[0].lower()
+        award += " and that "  + qual_to_adj[indicator] + quality.lower()
+        return award
+    
     def reply(self, username, award):
         """
             Reply to user who tweeted us with award
         """
-        api.update_status("@" + username + award)
+        try:
+            api.update_status("@" + username + " " +  award)
+        except tweepy.TweepError:
+            api.update_status("@" + username + " idk!")
+        except:
+            pass
 
     def get_user(self, status):
         return status.user.screen_name
-
 
 
 if __name__ == "__main__":
